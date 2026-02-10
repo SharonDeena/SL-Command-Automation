@@ -72,7 +72,6 @@ commands = [
 ("Audio banlance Left","AA 06 DE 00 82 95"),
 ("Audio banlance right","AA 06 DE 01 92 B4"),
 ("Audio banlance","AA 06 DE 02 A2 D7"),
-("Guide left","AA 06 DF 00 B1 A4"),
 ("Guide right","AA 06 DF 01 A1 85"),
 ("Guide up","AA 06 DF 02 91 E6"),
 ("Guide down","AA 06 DF 03 81 C7"),
