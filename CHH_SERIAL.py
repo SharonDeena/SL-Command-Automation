@@ -148,3 +148,4 @@ for i, item in enumerate(commands):
 # Close the serial connection
 ser.close()
 print("Serial connection closed.")
+
