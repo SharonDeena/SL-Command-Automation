@@ -1,5 +1,8 @@
 import serial
 import time
+import os
+import pandas as pd  # type: ignore
+from datetime import datetime 
 
 
 # Configure the serial connection
@@ -15,6 +18,8 @@ ser = serial.Serial(
 if ser.isOpen():
     print("Serial port open successfully.\n")
 
+test_results = []
+
 # Function to send a hex command
 def send_hex_command(hex_command):
     byte_command = bytes.fromhex(hex_command.replace(" ", ""))  # remove spaces
@@ -23,13 +28,17 @@ def send_hex_command(hex_command):
 
 # Function to read the response
 def read_response():
-    time.sleep(2)  # small delay to allow response
-    response = ser.read(ser.in_waiting)  # read available data
+    time.sleep(2)
+    response = ser.read(ser.in_waiting)
+
     if response:
-        print("Received:")
-        print(response.hex(), "\n")
+        hex_response = response.hex().upper()
+        print(f"Received: {hex_response}\n")
+        return hex_response
     else:
         print("No response\n")
+        return "No Response"
+
 
 # List of commands to send
 commands = [
@@ -107,15 +116,55 @@ commands = [
 ("Factory Reset","AC 00 08 04 04 01 00 42")
 ]
 
+
 # Send each command with required timing
-for i, item in enumerate(commands):
+for i, item in enumerate(commands,start=1):
     name, cmd = item   # unpack tuple
 
     print(f"Switched to: {name}")
     send_hex_command(cmd)
+    hex_response = read_response()
+
+    status = "FAIL"
+
+    if hex_response == "No Response":
+        status = "FAIL"
+    elif hex_response == "AC04004F":
+        print("Result: PASS\n")
+        status = "PASS"
+    elif hex_response == "AC04014E":
+        print("Result: FAIL\n")
+        status = "FAIL"
+    elif hex_response =="FC0017032300303032653038303531303030363666353A":
+        print("SOC ID:39090210000162.00\n")
+        print("Result: PASS\n")
+        status = "FAIL"
+    elif hex_response == "FC000D0301001C2FA2DCE0FB4E":
+        print("Result: Eth MAC - 1C 2F A2 DC E0 FB\n")
+        status = "PASS"
+    elif hex_response == "FC000D030500E8519E2211776D":
+        print("Result: BT MAC - E8 51 9E 22 11 77\n")
+        status = "PASS"
+    elif hex_response == "FC000D030400E8519E2211766F":
+        print("Result: Wifi MAC - E8 51 9E 22 11 76\n")
+        status = "PASS"
+    elif hex_response == "AC04004F":
+        print("Result: WiFi connected(pass)\n")
+        status = "PASS"
+    elif hex_response == "AC04014E":
+        print("Result: WiFi port not open\n")
+        status = "FAIL"
+    elif hex_response == "AC04024D":
+        print("Result: WiFi port is open but not connected\n")
+        status = "FAIL"
+
+
+    else: 
+        if hex_response != "No Response":
+            status = "PASS"
 
     if i == 3:
-        time.sleep(10)
+        time.sleep(25)
     elif i == 7:
         time.sleep(21)
     elif i == 68:
@@ -123,9 +172,32 @@ for i, item in enumerate(commands):
     else:
         time.sleep(2)
 
-    read_response()
+
+   # -------- STORE RESULT --------
+    test_results.append({
+        "S.NO": i,
+        "FUNCTION": name,
+        "SERIAL COMMAND": cmd,
+        "RESPONSE RECEIVED": hex_response,
+        "STATUS": status
+    })
 
 
 # Close the serial connection
 ser.close()
 print("Serial connection closed.")
+
+# ---------------- GENERATE EXCEL REPORT ----------------
+df = pd.DataFrame(test_results)
+
+timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+file_name = f"KTC_Test_Report_{timestamp}.xlsx"
+file_path = os.path.join(os.getcwd(), file_name)
+
+df.to_excel(file_path, index=False)
+
+print("Test Completed")
+print("Excel Report Generated at:", file_path)
+
+# ---------------- OPEN EXCEL FILE ----------------
+os.startfile(file_path)
